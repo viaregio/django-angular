@@ -34,6 +34,9 @@ class KeyErrorList(object):
 
 
 class TupleErrorList(forms.util.ErrorList):
+    def __init__(self, lis=[]):
+        super(TupleErrorList, self).__init__(lis)
+
     def as_ul(self):
         field_name = len(self) and isinstance(self[0], SafeTuple) and self[0][0] or ''
         lis = format_html_join('', '<li ng-show="{0}.$error.{1}">{2}</li>', (e for e in list.__iter__(self)))
@@ -41,6 +44,7 @@ class TupleErrorList(forms.util.ErrorList):
                            self.form_error_class, field_name, lis)
 
     def __iter__(self):
+        # combine real error list with faked error list
         for e in list.__iter__(self):
             yield isinstance(e, SafeTuple) and force_text(e[1]) or e
 
@@ -53,15 +57,31 @@ class NgFormValidationMixin(NgFormBaseMixin):
     def __init__(self, *args, **kwargs):
         self.form_name = kwargs.pop('form_name', 'form')
         self.form_error_class = kwargs.pop('form_error_class', 'djng-form-errors')
-        kwargs.update(error_class=type('SafeTupleErrorList', (TupleErrorList,), { 'form_error_class': self.form_error_class }))
+        error_class = type('SafeTupleErrorList', (TupleErrorList,), { 'form_error_class': self.form_error_class })
+        kwargs.update(error_class=error_class)
         super(NgFormValidationMixin, self).__init__(*args, **kwargs)
+        setattr(self.error_class, 'form_fields', self.fields)
+        # add ng-model to each model field
+        for name, field in self.fields.items():
+            identifier = self.add_prefix(name)
+            field.widget.attrs.setdefault('ng-model', identifier)
+
+    def _html_output(self, normal_row, error_row, row_ender, help_text_html, errors_on_separate_row):
+        # override rendering function
+        return super(NgFormValidationMixin, self)._html_output(normal_row, error_row, row_ender, help_text_html, errors_on_separate_row)
+
+    def name(self):
+        return self.form_name
+
+    def _dead_code(self):
+        """
+        Add possible errors to to be rendered as hidden elements, so that the AngularJS validator
+        can display when approriate
+        """
         if not hasattr(self, '_errors') or self._errors is None:
             self._errors = forms.util.ErrorDict()
         patched_form_fields_module = import_module('djangular.forms.patched_fields')
         for name, field in self.fields.items():
-            # add ng-model to each model field
-            identifier = self.add_prefix(name)
-            field.widget.attrs.setdefault('ng-model', identifier)
             # each field type may have different errors and additional AngularJS specific attributes
             ng_errors_function = '{0}_angular_errors'.format(field.__class__.__name__)
             try:
@@ -70,8 +90,5 @@ class NgFormValidationMixin(NgFormBaseMixin):
             except (TypeError, AttributeError):
                 ng_errors_function = getattr(patched_form_fields_module, 'Default_angular_errors')
                 errors = types.MethodType(ng_errors_function, field)()
-            field_name = '{0}.{1}'.format(self.form_name, identifier)
+            field_name = '{0}.{1}'.format(self.form_name, field.widget.attrs['ng-model'])
             self._errors[name] = KeyErrorList(field_name, errors)
-
-    def name(self):
-        return self.form_name

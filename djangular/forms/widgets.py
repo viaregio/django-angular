@@ -1,10 +1,14 @@
 # -*- coding: utf-8 -*-
-from django.forms import widgets
+from django.forms.widgets import CheckboxSelectMultiple as BaseCheckboxSelectMultiple
 from django.utils.html import format_html
 from django.forms.util import flatatt
+try:
+    from django.forms.widgets import ChoiceFieldRenderer as BaseChoiceFieldRenderer, CheckboxChoiceInput as BaseCheckboxChoiceInput
+except ImportError:  # in Django <= 1.5 these widgets did not exist
+    from .shims import ChoiceFieldRenderer as BaseChoiceFieldRenderer, CheckboxChoiceInput as BaseCheckboxChoiceInput
 
 
-class CheckboxChoiceInput(widgets.CheckboxChoiceInput):
+class CheckboxChoiceInput(BaseCheckboxChoiceInput):
     def tag(self):
         if 'id' in self.attrs:
             self.attrs['id'] = '%s_%s' % (self.attrs['id'], self.index)
@@ -17,11 +21,11 @@ class CheckboxChoiceInput(widgets.CheckboxChoiceInput):
         return format_html('<input{0} />', flatatt(final_attrs))
 
 
-class CheckboxFieldRenderer(widgets.ChoiceFieldRenderer):
+class CheckboxFieldRenderer(BaseChoiceFieldRenderer):
     choice_input_class = CheckboxChoiceInput
 
 
-class CheckboxSelectMultiple(widgets.CheckboxSelectMultiple):
+class CheckboxSelectMultiple(BaseCheckboxSelectMultiple):
     """
     Form fields of type 'MultipleChoiceField' using the widget 'CheckboxSelectMultiple' must behave
     slightly different from the original. This widget overrides the default functionality.

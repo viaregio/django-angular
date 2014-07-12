@@ -3,11 +3,18 @@ from django.utils.html import format_html
 from django.utils.safestring import mark_safe
 from django.utils.encoding import force_text
 from django.forms.util import flatatt
-from django.forms import widgets
+from django.forms.widgets import CheckboxInput as BaseCheckboxInput, \
+        RadioFieldRenderer as BaseRadioFieldRenderer, RadioSelect as BaseRadioSelect
+try:
+    from django.forms.widgets import ChoiceFieldRenderer as BaseChoiceFieldRenderer, \
+        CheckboxChoiceInput as BaseCheckboxChoiceInput, RadioChoiceInput as BaseRadioChoiceInput
+except ImportError:  # in Django <= 1.5 these widgets did not exist
+    from djangular.forms.shims import ChoiceFieldRenderer as BaseChoiceFieldRenderer, \
+        CheckboxChoiceInput as BaseCheckboxChoiceInput, RadioChoiceInput as BaseRadioChoiceInput
 from djangular.forms.widgets import CheckboxSelectMultiple as DjngCheckboxSelectMultiple
 
 
-class CheckboxChoiceInput(widgets.CheckboxChoiceInput):
+class CheckboxChoiceInput(BaseCheckboxChoiceInput):
     def render(self, name=None, value=None, attrs=None, choices=()):
         name = name or self.name
         value = value or self.value
@@ -30,7 +37,7 @@ class CheckboxChoiceInput(widgets.CheckboxChoiceInput):
         return format_html('<input{0} />', flatatt(final_attrs))
 
 
-class CheckboxFieldRenderer(widgets.ChoiceFieldRenderer):
+class CheckboxFieldRenderer(BaseChoiceFieldRenderer):
     choice_input_class = CheckboxChoiceInput
 
     def render(self):
@@ -46,7 +53,7 @@ class CheckboxFieldRenderer(widgets.ChoiceFieldRenderer):
         return mark_safe('\n'.join(output))
 
 
-class CheckboxInput(widgets.CheckboxInput):
+class CheckboxInput(BaseCheckboxInput):
     def render(self, name, value, attrs=None):
         attrs = attrs or self.attrs
         label_attrs = ['class="checkbox-inline"']
@@ -57,7 +64,7 @@ class CheckboxInput(widgets.CheckboxInput):
         return format_html('<label {0}>{1} {2}</label>', label_for, tag, self.choice_label)
 
 
-class RadioChoiceInput(widgets.RadioChoiceInput):
+class RadioChoiceInput(BaseRadioChoiceInput):
     def render(self, name=None, value=None, attrs=None, choices=()):
         name = name or self.name
         value = value or self.value
@@ -69,7 +76,7 @@ class RadioChoiceInput(widgets.RadioChoiceInput):
         return format_html('<label {0}>{1} {2}</label>', label_for, self.tag(), self.choice_label)
 
 
-class RadioFieldRenderer(widgets.RadioFieldRenderer):
+class RadioFieldRenderer(BaseRadioFieldRenderer):
     choice_input_class = RadioChoiceInput
 
     def render(self):
@@ -85,7 +92,7 @@ class RadioFieldRenderer(widgets.RadioFieldRenderer):
         return mark_safe('\n'.join(output))
 
 
-class RadioSelect(widgets.RadioSelect):
+class RadioSelect(BaseRadioSelect):
     renderer = RadioFieldRenderer
 
 

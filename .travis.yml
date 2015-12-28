@@ -15,6 +15,7 @@ install:
   - pip install -q Django==$DJANGO
   - pip install pyquery
   - pip install pygments
+  - pip install six
   - python setup.py -q install
   - npm install -g grunt-cli
   - pushd . ; cd client && npm install; popd
